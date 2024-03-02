@@ -1,5 +1,4 @@
 // const geoToken = process.env.GEO_TOKEN;
-const apiToken = process.env.API_TOKEN;
 
 let geowidgetAppended = false;
 let pointSelected = false;
@@ -68,49 +67,6 @@ let appendGeoWidget = function () {
   });
 };
 
-let createShipment = function () {
-  if (!globalBillingDetails) throw new Error("Billing details not available");
-  $.ajax({
-    url: "https://sandbox-api-shipx-pl.easypack24.net/v1/organizations/3879/shipments",
-    type: "POST",
-    headers: {
-      Authorization: `Bearer ${apiToken}`,
-      "Content-Type": "application/json",
-    },
-    data: JSON.stringify({
-      receiver: {
-        first_name: globalBillingDetails.firstName,
-        last_name: globalBillingDetails.name,
-        email: globalEmail,
-        phone: globalBillingDetails.phone,
-      },
-      parcels: {
-        template: "small",
-      },
-      insurance: {
-        amount: 25,
-        currency: "PLN",
-      },
-      cod: {
-        amount: 12.5,
-        currency: "PLN",
-      },
-      custom_attributes: {
-        sending_method: "parcel_locker",
-        target_point: globalDetails.name,
-      },
-      service: "inpost_locker_standard",
-      reference: "snipcart",
-    }),
-    success: function (response) {
-      console.log("Server response:", response);
-    },
-    error: function (error) {
-      console.error("Error creating shipment:", error);
-    },
-  });
-};
-
 document.addEventListener("snipcart.ready", function () {
   Snipcart.events.on("shipping.selected", (shippingMethod) => {
     if (shippingMethod.method === "inPost" && !geowidgetAppended) {
@@ -121,5 +77,37 @@ document.addEventListener("snipcart.ready", function () {
     }
   });
 
-  Snipcart.events.on("cart.confirmed", createShipment);
+  Snipcart.events.on("cart.confirmed", async function () {
+    if (!pointSelected) {
+      throw new Error("Please select a delivery point");
+    }
+
+    const shipmentData = {
+      billingDetails: Snipcart.store.getState().cart.billingAddress,
+      shippingDetails: {
+        name: globalDetails.name,
+        addressLine1: globalDetails.address.line1,
+        city: globalDetails.address_details.city,
+        postalCode: globalDetails.address_details.post_code,
+      },
+    };
+
+    try {
+      const response = await fetch("/api/shipment", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(shipmentData),
+      });
+
+      if (!response.ok) {
+        throw new Error("Error creating shipment");
+      }
+
+      console.log("Shipment created successfully");
+    } catch (error) {
+      console.error("Error creating shipment:", error);
+    }
+  });
 });
