@@ -1,11 +1,5 @@
-require("dotenv").config();
-
-function getAuthToken(name) {
-  return process.env[name];
-}
-
-let geoToken = getAuthToken("GEO_TOKEN");
-let apiToken = getAuthToken("API_TOKEN");
+const geoToken = process.env.GEO_TOKEN;
+const apiToken = process.env.API_TOKEN;
 
 let geowidgetAppended = false;
 let pointSelected = false;
